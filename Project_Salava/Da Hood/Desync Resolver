@@ -1,6 +1,0 @@
-pcall(function()
-    if Storage.Aimlocksets.target and Storage.Aimlocksets.DesyncResolver then
-        maintarget.Character.HumanoidRootPart.Velocity = V3new(0,0,0)
-        maintarget.Character.HumanoidRootPart.AssemblyLinearVelocity = V3new(0,0,0)
-    end
-end)
