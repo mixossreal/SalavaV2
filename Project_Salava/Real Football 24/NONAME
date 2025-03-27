@@ -1,0 +1,2 @@
+getgenv().santo = "Ad2du-lGaS1-bV3e-Er8KmQ9w"
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Edaruph/My-Scripts/main/RF24/FreeGUI", true))()
