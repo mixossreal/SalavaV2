@@ -1,0 +1,102 @@
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+
+local Bullet = require(ReplicatedStorage.Components.BulletFactory)
+function GetClosestToMouse()
+    local MouseLocation = UserInputService:GetMouseLocation()
+    local ClosestPlayer = nil
+    local ClosestCharacter = nil
+    local ClosestDistance = math.huge
+
+    for _, Player in ipairs(Players:GetPlayers()) do
+        if Player ~= LocalPlayer and Player.Character and (Player.Character:FindFirstChild("HumanoidRootPart") or Player.Character:FindFirstChild("Torso")) then
+            local Character = Player.Character
+            local part = Character:FindFirstChild("HumanoidRootPart") or Character:FindFirstChild("Torso")
+            local ScreenPosition, _ = Camera:WorldToScreenPoint(part.Position)
+            if ScreenPosition then
+                local Distance = (Vector2.new(ScreenPosition.X, ScreenPosition.Y) - MouseLocation).Magnitude
+                if Distance < ClosestDistance then
+                    ClosestDistance = Distance
+                    ClosestPlayer = Player
+                    ClosestCharacter = Character
+                end
+            end
+        end
+    end
+
+    return ClosestPlayer, ClosestCharacter
+end
+local OldFire
+OldFire = hookfunction(Bullet.Fire, function(BulletId, Origin, BulletPos, ...)
+    if aimEnabled then
+        local Player, Character = GetClosestToMouse()
+        if Player and Character and Character:FindFirstChild("Head") then
+            Origin = (Character.Head.CFrame * CFrame.new(0, 0, 1)).p  -- wallbang :p
+            BulletPos = (Character.Head.Position - Origin)     -- bullet instantâneo :O
+        end
+    end
+    return OldFire(BulletId, Origin, BulletPos, ...)
+end)
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "TargetSquareGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = CoreGui
+
+local square = Instance.new("Frame")
+square.Name = "TargetSquare"
+square.AnchorPoint = Vector2.new(0.5, 0.5)
+square.BackgroundColor3 = Color3.fromRGB(128, 0, 128)  -- roxo
+square.BorderSizePixel = 2
+square.Size = UDim2.new(0, 50, 0, 50)
+square.Position = UDim2.new(0.5, 0, 0.5, 0)
+square.Parent = screenGui
+
+local lastScreenPos = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+local lastDistance = 1000  -- valor inicial padrão
+
+RunService.RenderStepped:Connect(function()
+    if not aimEnabled then
+        square.Visible = false
+        return
+    else
+        square.Visible = true
+    end
+
+    local _, Character = GetClosestToMouse()
+    if Character then
+        local targetPart = Character:FindFirstChild("UpperTorso") or Character:FindFirstChild("Torso") or Character:FindFirstChild("HumanoidRootPart")
+        if targetPart then
+            local screenPos = Camera:WorldToScreenPoint(targetPart.Position)
+            lastScreenPos = Vector2.new(screenPos.X, screenPos.Y)
+            lastDistance = (targetPart.Position - Camera.CFrame.Position).Magnitude
+        end
+    end
+
+    local factor = 1000
+    local minSize = 20
+    local maxSize = 70
+    local newSize = math.clamp(factor / lastDistance, minSize, maxSize)
+
+    square.Size = UDim2.new(0, newSize, 0, newSize)
+
+    local viewportSize = Camera.ViewportSize
+    local clampedX = math.clamp(lastScreenPos.X, newSize / 2, viewportSize.X - newSize / 2)
+    local clampedY = math.clamp(lastScreenPos.Y, newSize / 2, viewportSize.Y - newSize / 2)
+    square.Position = UDim2.new(0, clampedX, 0, clampedY)
+end)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
+    if gameProcessedEvent then return end
+    if input.KeyCode == Enum.KeyCode.RightControl then
+        aimEnabled = not aimEnabled
+        if not aimEnabled then
+            square.Visible = false
+        end
+    end
+end)
